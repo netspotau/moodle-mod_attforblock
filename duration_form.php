@@ -15,7 +15,7 @@ class mod_attforblock_duration_form extends moodleform {
         $ids		   = $this->_customdata['ids'];
 
         $mform->addElement('header', 'general', get_string('changeduration','attforblock'));
-		$mform->addElement('static', 'count', get_string('countofselected','attforblock'), count(explode('_', $ids)));
+        $mform->addElement('static', 'count', get_string('countofselected','attforblock'), count(explode('_', $ids)));
         
         for ($i=0; $i<=23; $i++) {
             $hours[$i] = sprintf("%02d",$i);
@@ -24,8 +24,8 @@ class mod_attforblock_duration_form extends moodleform {
             $minutes[$i] = sprintf("%02d",$i);
         }
         $durselect[] =& MoodleQuickForm::createElement('select', 'hours', '', $hours);
-		$durselect[] =& MoodleQuickForm::createElement('select', 'minutes', '', $minutes, false, true);
-		$mform->addGroup($durselect, 'durtime', get_string('newduration','attforblock'), array(' '), true);
+        $durselect[] =& MoodleQuickForm::createElement('select', 'minutes', '', $minutes, false, true);
+        $mform->addGroup($durselect, 'durtime', get_string('newduration','attforblock'), array(' '), true);
 		
         $mform->addElement('hidden', 'ids', $ids);
        	$mform->addElement('hidden', 'id', $cm->id);

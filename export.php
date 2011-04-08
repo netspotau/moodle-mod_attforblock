@@ -3,13 +3,12 @@
 //  Lists all the sessions for a course
 
     require_once('../../config.php');    
-	require_once('locallib.php');
-//	require_once('grouplib.php');
-	require_once('export_form.php');
-	
+    require_once('locallib.php');
+    require_once('export_form.php');
 
-    $id 	= required_param('id', PARAM_INT);
-//	$format	= optional_param('format', '', PARAM_ACTION);
+    $id = required_param('id', PARAM_INT);
+
+    $url = new moodle_url('/mod/attforblock/export.php');
 	
     if (! $cm = $DB->get_record("course_modules", array("id" => $id))) {
         print_error("Course Module ID was incorrect");
@@ -23,16 +22,18 @@
         print_error("Course module is incorrect");
     }
     
+    $url->param($id);
+    $PAGE->set_url($url);
     require_login($course->id);
 	
     $context = get_context_instance(CONTEXT_MODULE, $cm->id);
     require_capability('mod/attforblock:export', $context);
     
-	$mform_export = new mod_attforblock_export_form('export.php', array('course'=>$course, 'cm'=>$cm, 'modcontext'=>$context));
+    $mform_export = new mod_attforblock_export_form('export.php', array('course'=>$course, 'cm'=>$cm, 'modcontext'=>$context));
     
-	if ($fromform = $mform_export->get_data()) {
-		$group = groups_get_group($fromform->group);
-	    if ($group) {
+    if ($fromform = $mform_export->get_data()) {
+        $group = groups_get_group($fromform->group);
+        if ($group) {
             $sql = "SELECT u.*
                 FROM {role_assignments} ra, {user} u, {course} c, {context} cxt
                 WHERE ra.userid = u.id
@@ -45,8 +46,8 @@
                 ORDER BY u.lastname ASC";
             $params = array($cm->course, $group->id);
             $students = $DB->get_records_sql($sql, $params);
-	        //$students = get_users_by_capability($context, 'moodle/legacy:student', '', 'u.lastname ASC', '', '', $group->id, '', false);
-	    } else {
+            //$students = get_users_by_capability($context, 'moodle/legacy:student', '', 'u.lastname ASC', '', '', $group->id, '', false);
+        } else {
             $sql = "SELECT u.*
                 FROM {role_assignments} ra, {user} u, {course} c, {context} cxt
                 WHERE ra.userid = u.id
@@ -58,92 +59,90 @@
                 ORDER BY u.lastname ASC";
             $params = array($cm->course);
             $students = $DB->get_records_sql($sql, $params);
-	        //$students = get_users_by_capability($context, 'moodle/legacy:student', '', 'u.lastname ASC', '', '', '', '', false);
-	    }
-	    
-		if ($students) {
-		    $filename = clean_filename($course->shortname.'_Attendances_'.userdate(time(), '%Y%m%d-%H%M'));
-		    
-		    $data->tabhead = array();
-//			$data->sheettitle = $course->fullname.' - ';
-//			$data->sheettitle .= $group ? $group->name : get_string('allparticipants');
-			$data->course = $course->fullname;
-			$data->group = $group ? $group->name : get_string('allparticipants');
+            //$students = get_users_by_capability($context, 'moodle/legacy:student', '', 'u.lastname ASC', '', '', '', '', false);
+        }
 
-			if (isset($fromform->ident['id'])) {
-				$data->tabhead[] = get_string('studentid','attforblock');
-			}
-			if (isset($fromform->ident['uname'])) {
-				$data->tabhead[] = get_string('username');
-			}
-			$data->tabhead[] = get_string('lastname');
-			$data->tabhead[] = get_string('firstname');
-			
-			$select = "courseid = {$course->id} AND sessdate >= {$course->startdate}";
-			if (isset($fromform->includenottaken)) {
-				$select .= " AND sessdate <= {$fromform->sessionenddate}";
-			} else {
-				$select .= " AND lasttaken != 0";
-			}
-	
-			if ($sessions = $DB->get_records_select('attendance_sessions', $select, null, 'sessdate ASC')) {
-				foreach($sessions as $sess) {
-					$data->tabhead[] = userdate($sess->sessdate, get_string('str_ftimedmyhm', 'attforblock'));
-				}
-			} else {
-				print_error('Sessions not found!', 'report.php?id='.$id);
-			}
-			$data->tabhead[] = '%';
-			
-			$i = 0;
-		    $data->table = array();
-			$statuses = get_statuses($course->id);
-			foreach($students as $student) {
-				if (isset($fromform->ident['id'])) {
-					$data->table[$i][] = $student->id;
-				}
-				if (isset($fromform->ident['uname'])) {
-					$data->table[$i][] = $student->username;
-				}
-				$data->table[$i][] = $student->lastname;
-				$data->table[$i][] = $student->firstname;
-				foreach ($sessions as $sess) {
-					if ($rec = $DB->get_record('attendance_log', array('sessionid' => $sess->id, 'studentid' => $student->id))) {
-						$data->table[$i][] = $statuses[$rec->statusid]->acronym;
-					} else {
-						$data->table[$i][] = '-';
-					}
-				}
-				$data->table[$i][] = get_percent($student->id, $course).'%';
-				$i++;
-			}
-			
-			if ($fromform->format === 'text') {
-				ExportToCSV($data, $filename);
-			} else {
-				ExportToTableEd($data, $filename, $fromform->format);
-			}
-			exit;
-		} else {
-			print_error('Students not found!', 'report.php?id='.$id);
-		}
+        if ($students) {
+            $filename = clean_filename($course->shortname.'_Attendances_'.userdate(time(), '%Y%m%d-%H%M'));
+
+            $data->tabhead = array();
+            $data->course = $course->fullname;
+            $data->group = $group ? $group->name : get_string('allparticipants');
+
+            if (isset($fromform->ident['id'])) {
+                $data->tabhead[] = get_string('studentid','attforblock');
+            }
+            if (isset($fromform->ident['uname'])) {
+                $data->tabhead[] = get_string('username');
+            }
+            $data->tabhead[] = get_string('lastname');
+            $data->tabhead[] = get_string('firstname');
+
+            $select = "courseid = {$course->id} AND sessdate >= {$course->startdate}";
+            if (isset($fromform->includenottaken)) {
+                $select .= " AND sessdate <= {$fromform->sessionenddate}";
+            } else {
+                $select .= " AND lasttaken != 0";
+            }
+
+            if ($sessions = $DB->get_records_select('attendance_sessions', $select, null, 'sessdate ASC')) {
+                foreach($sessions as $sess) {
+                    $data->tabhead[] = userdate($sess->sessdate, get_string('str_ftimedmyhm', 'attforblock'));
+                }
+            } else {
+                print_error('Sessions not found!', 'report.php?id='.$id);
+            }
+            $data->tabhead[] = '%';
+
+            $i = 0;
+            $data->table = array();
+            $statuses = get_statuses($course->id);
+            foreach($students as $student) {
+                if (isset($fromform->ident['id'])) {
+                    $data->table[$i][] = $student->id;
+                }
+                if (isset($fromform->ident['uname'])) {
+                    $data->table[$i][] = $student->username;
+                }
+                $data->table[$i][] = $student->lastname;
+                $data->table[$i][] = $student->firstname;
+                foreach ($sessions as $sess) {
+                    if ($rec = $DB->get_record('attendance_log', array('sessionid' => $sess->id, 'studentid' => $student->id))) {
+                        $data->table[$i][] = $statuses[$rec->statusid]->acronym;
+                    } else {
+                        $data->table[$i][] = '-';
+                    }
+                }
+                $data->table[$i][] = get_percent($student->id, $course).'%';
+                $i++;
+            }
+
+            if ($fromform->format === 'text') {
+                ExportToCSV($data, $filename);
+            } else {
+                ExportToTableEd($data, $filename, $fromform->format);
+            }
+            exit;
+        } else {
+            print_error('Students not found!', 'report.php?id='.$id);
+        }
     } else {
-		/// Print headers
-	    $navlinks[] = array('name' => $attforblock->name, 'link' => "view.php?id=$id", 'type' => 'activity');
-	    $navlinks[] = array('name' => get_string('export', 'quiz'), 'link' => null, 'type' => 'activityinstance');
-	    $navigation = build_navigation($navlinks);
-	    print_header("$course->shortname: ".$attforblock->name.' - ' .get_string('export', 'quiz'), $course->fullname,
-	                 $navigation, "", "", true, "&nbsp;", navmenu($course));
-	    
-	    show_tabs($cm, $context, 'export');
+        /// Print headers
+        $navlinks[] = array('name' => $attforblock->name, 'link' => "view.php?id=$id", 'type' => 'activity');
+        $navlinks[] = array('name' => get_string('export', 'quiz'), 'link' => null, 'type' => 'activityinstance');
+        $navigation = build_navigation($navlinks);
+        print_header("$course->shortname: ".$attforblock->name.' - ' .get_string('export', 'quiz'), $course->fullname,
+                     $navigation, "", "", true, "&nbsp;", navmenu($course));
+
+        show_tabs($cm, $context, 'export');
     	$mform_export->display();
     }
-	echo $OUTPUT->footer($course);
+    echo $OUTPUT->footer($course);
     
 /////////////////////////////////////////////////////////////////////////////////
 
 function ExportToTableEd($data, $filename, $format) {
-	global $CFG;
+    global $CFG;
 	
     if ($format === 'excel') {
 	    require_once("$CFG->libdir/excellib.class.php");
@@ -176,17 +175,12 @@ function ExportToTableEd($data, $filename, $format) {
     $j = 0;
     foreach ($data->table as $row) {
     	foreach ($row as $cell) {
-    		$myxls->write($i, $j++, $cell);
-//    		if (is_numeric($cell)) {
-//    			$myxls->write_number($i, $j++, $cell);
-//    		} else {
-//    			$myxls->write_string($i, $j++, $cell);
-//    		}
+            $myxls->write($i, $j++, $cell);
     	}
-		$i++;
-		$j = 0;
+        $i++;
+        $j = 0;
     }
-	$workbook->close();	
+    $workbook->close();
 }
 
 function ExportToCSV($data, $filename) {

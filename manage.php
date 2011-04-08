@@ -7,7 +7,9 @@
     require_once('locallib.php');
 
     $id   = required_param('id', PARAM_INT);   // Course Module ID, or
-	$from = optional_param('from', PARAM_ACTION);
+    $from = optional_param('from', "", PARAM_ACTION);
+
+    $url = new moodle_url('/mod/attforblock/manage.php');
 
     if (! $cm = $DB->get_record('course_modules', array('id' => $id))) {
         error('Course Module ID was incorrect');
@@ -20,7 +22,10 @@
     if (! $attforblock = $DB->get_record('attforblock', array('id' => $cm->instance))) {
         error("Course module is incorrect");
     }
-    
+
+    $url->param($id);
+    $url->param($from);
+    $PAGE->set_url($url);
     require_login($course->id);
 
     if (! $user = $DB->get_record('user', array('id' => $USER->id)) ) {
@@ -80,7 +85,7 @@
 function print_sessions_list($course) {
 	global $CFG, $DB, $OUTPUT, $USER, $context, $cm;
 	
-			$USER->timezone = $tz;
+			//$USER->timezone = $tz;
 	        $strhours = get_string('hours');
 			$strmins = get_string('min');
 				
@@ -129,8 +134,8 @@ function print_sessions_list($course) {
 				}
 				
 				$table->data[$sessdata->id][] = $i;
-				$table->data[$sessdata->id][] = userdate($sessdata->sessdate, get_string('str_ftimedmyw', 'attforblock'), $tz);
-				$table->data[$sessdata->id][] = userdate($sessdata->sessdate, get_string('str_ftimehm', 'attforblock'), $tz);
+				$table->data[$sessdata->id][] = userdate($sessdata->sessdate, get_string('str_ftimedmyw', 'attforblock'), $USER->timezone);
+				$table->data[$sessdata->id][] = userdate($sessdata->sessdate, get_string('str_ftimehm', 'attforblock'), $USER->timezone);
                 $hours = floor($sessdata->duration / HOURSECS);
                 $mins = floor(($sessdata->duration - $hours * HOURSECS) / MINSECS);
                 $mins = $mins < 10 ? "0$mins" : "$mins";

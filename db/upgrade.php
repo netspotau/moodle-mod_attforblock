@@ -19,7 +19,7 @@
 
 function xmldb_attforblock_upgrade($oldversion=0) {
 
-    global $CFG, $THEME, $db;
+    global $CFG, $THEME, $DB;
 
     $result = true;
 
@@ -28,19 +28,19 @@ function xmldb_attforblock_upgrade($oldversion=0) {
 /// this comment lines once this file start handling proper
 /// upgrade code.
 
-	if ($result && $oldversion < 2008021904) { //New version in version.php
-		global $USER;
-		if ($sessions = get_records('attendance_sessions', 'takenby', 0)) {
-			foreach ($sessions as $sess) {
-				if (count_records('attendance_log', 'attsid', $sess->id) > 0) {
-					$sess->takenby = $USER->id;
-					$sess->timetaken = $sess->timemodified ? $sess->timemodified : time();
-					$sess->description = addslashes($sess->description);
-					$result = update_record('attendance_sessions', $sess) and $result;
-				}
-			}
-		}
-	}
+    if ($result && $oldversion < 2008021904) { //New version in version.php
+        global $USER;
+        if ($sessions = $DB->get_records('attendance_sessions', array('takenby' => 0))) {
+            foreach ($sessions as $sess) {
+                if ($DB->count_records('attendance_log', array('attsid' => $sess->id)) > 0) {
+                    $sess->takenby = $USER->id;
+                    $sess->timetaken = $sess->timemodified ? $sess->timemodified : time();
+                    $sess->description = addslashes($sess->description);
+                    $result = $DB->update_record('attendance_sessions', $sess) and $result;
+                }
+            }
+        }
+    }
 
     if ($oldversion < 2008102401 and $result) {
     	
@@ -48,14 +48,14 @@ function xmldb_attforblock_upgrade($oldversion=0) {
         
         $field = new XMLDBField('grade');
         $field->setAttributes(XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, null, '100', 'name');
-        $result = $result && add_field($table, $field);
+        $result = $result && $table->add_field($table, $field);
     	
         
         $table = new XMLDBTable('attendance_sessions');
         
         $field = new XMLDBField('courseid');
         $field->setAttributes(XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, null, null, '0', 'id');
-        $result = $result && change_field_unsigned($table, $field);
+        $result = $result && $table->change_field_unsigned($table, $field);
     	
 //        $field = new XMLDBField('creator');
 //        $field->setAttributes(XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, null, null, '0', 'courseid');
@@ -156,37 +156,35 @@ function xmldb_attforblock_upgrade($oldversion=0) {
     
     if ($oldversion < 2008102406 and $result) {
     	
-	    if ($courses = get_records_sql("SELECT courseid FROM {$CFG->prefix}attendance_sessions GROUP BY courseid")) {
-	    		foreach ($courses as $c) {
-	    			//Adding own status for course (now it must have own)
-	    			if (!count_records('attendance_statuses', 'courseid', $c->courseid)) {
-	    				$statuses = get_records('attendance_statuses', 'courseid', 0);
-						foreach($statuses as $stat) {
-							$rec = $stat;
-							$rec->courseid = $c->courseid;
-							insert_record('attendance_statuses', $rec);
-						}
-	    			}
-	    			$statuses = get_records('attendance_statuses', 'courseid', $c->courseid);
-	    			$statlist = implode(',', array_keys($statuses));
-	    			$sess = get_records_select_menu('attendance_sessions', "courseid = $c->courseid AND lasttakenby > 0");
-	    			$sesslist = implode(',', array_keys($sess));
-					foreach($statuses as $stat) {
-						execute_sql("UPDATE {$CFG->prefix}attendance_log 
-										SET statusid = {$stat->id}, statusset = '$statlist'
-									  WHERE sessionid IN ($sesslist) AND status = '$stat->status'");
-					}
-	    			$sessions = get_records_list('attendance_sessions', 'id', $sesslist);
-					foreach($sessions as $sess) {
-						execute_sql("UPDATE {$CFG->prefix}attendance_log 
-										SET timetaken = {$sess->lasttaken}, 
-											takenby = {$sess->lasttakenby}
-									  WHERE sessionid = {$sess->id}");
-					}
-	    			
-	    		}
-	    	}
-    	    	
+        if ($courses = $DB->get_records_sql("SELECT courseid FROM {attendance_sessions} GROUP BY courseid")) {
+            foreach ($courses as $c) {
+                //Adding own status for course (now it must have own)
+                if (!$DB->count_records('attendance_statuses', array('courseid' => $c->courseid))) {
+                    $statuses = $DB->get_records('attendance_statuses', array('courseid' => 0));
+                    foreach($statuses as $stat) {
+                        $rec = $stat;
+                        $rec->courseid = $c->courseid;
+                        $DB->insert_record('attendance_statuses', $rec);
+                    }
+                }
+                $statuses = $DB->get_records('attendance_statuses', array('courseid' => $c->courseid));
+                $statlist = implode(',', array_keys($statuses));
+                $sess = $DB->get_records_select_menu('attendance_sessions', "courseid = ? AND lasttakenby > 0", array($c->courseid));
+                $sesslist = implode(',', array_keys($sess));
+                foreach($statuses as $stat) {
+                    execute_sql("UPDATE {$CFG->prefix}attendance_log
+                                        SET statusid = {$stat->id}, statusset = '$statlist'
+                                  WHERE sessionid IN ($sesslist) AND status = '$stat->status'");
+                }
+                $sessions = get_records_list('attendance_sessions', 'id', $sesslist);
+                foreach($sessions as $sess) {
+                    execute_sql("UPDATE {$CFG->prefix}attendance_log
+                                    SET timetaken = {$sess->lasttaken},
+                                            takenby = {$sess->lasttakenby}
+                              WHERE sessionid = {$sess->id}");
+                }
+            }
+        }
      }
      
     if ($oldversion < 2008102409 and $result) {

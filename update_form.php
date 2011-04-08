@@ -20,9 +20,9 @@ class mod_attforblock_update_form extends moodleform {
 	        error('No such session in this course');
 	    }
         $mform->addElement('header', 'general', get_string('changesession','attforblock'));
-		$mform->addHelpButton('general', 'changesession', 'attforblock');
-        
-		$mform->addElement('static', 'olddate', get_string('olddate','attforblock'), userdate($att->sessdate, get_string('str_ftimedmyhm', 'attforblock')));
+        $mform->addHelpButton('general', 'changesession', 'attforblock');
+
+        $mform->addElement('static', 'olddate', get_string('olddate','attforblock'), userdate($att->sessdate, get_string('str_ftimedmyhm', 'attforblock')));
         $mform->addElement('date_time_selector', 'sessiondate', get_string('newdate','attforblock'));
 
         for ($i=0; $i<=23; $i++) {

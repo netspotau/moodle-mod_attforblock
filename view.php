@@ -8,9 +8,11 @@
 
     $id   = optional_param('id', -1, PARAM_INT);   // Course Module ID, or
 //    $a    = optional_param('a', -1, PARAM_INT);    // attforblock ID
-	$studentid			= optional_param('student', 0, PARAM_INT);
-	$printing			= optional_param('printing');
-    $mode 				= optional_param('mode', 'thiscourse');
+    $studentid	= optional_param('student', 0, PARAM_INT);
+    $printing	= optional_param('printing', null, PARAM_ALPHA);
+    $mode 	= optional_param('mode', 'thiscourse', PARAM_ALPHA);
+
+    $url = new moodle_url('/mod/attforblock/view.php');
 	
     if ($id) {
         if (! $cm = $DB->get_record("course_modules", array("id" => $id))) {
@@ -38,6 +40,11 @@
 //        }
     }
 
+    $url->param($id);
+    $url->param($studentid);
+    $url->param($printing);
+    $url->param($mode);
+    $PAGE->set_url($url);
     require_login($course->id);
 
     if (!$context = get_context_instance(CONTEXT_MODULE, $cm->id)) {
